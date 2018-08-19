@@ -12,7 +12,7 @@ q=queue.Queue()
 class server:
     def __init__(self):
         self.sock = None
-        self.conn =None
+        self.conn = None
 
     def connect(self):
         try:
@@ -25,10 +25,10 @@ class server:
 
         except Exception as er:
             if er.errno == 98:
-                print("Address already in use")
-                # return conn
-                time.sleep(3)
-                print(er)
+                print("Socket already in use")
+            self.sock = None
+            time.sleep(3)
+            print(er)
 
 
     def run(self):
@@ -54,6 +54,8 @@ class server:
         print("Start main server thread !")
         while True:
             try:
+                while self.sock is None:
+                    self.connect()
                 self.conn, addr = self.sock.accept()
                 self.conn.settimeout(3)  # timeout settings !
                 if self.sock is None:
@@ -68,10 +70,11 @@ class server:
                 with open('result.csv', 'a') as csvfile:
                     writer = csv.writer(csvfile, delimiter=' ',
                                             quotechar=';', quoting=csv.QUOTE_MINIMAL)
-                    #writer.writerow([data, time.asctime(time.localtime(time.time()))])
+                    writer.writerow([data, time.asctime(time.localtime(time.time()))])
 
             except Exception as er:
-                self.conn.close()
+                if self.conn is not None:
+                    self.conn.close()
                 print("Exception " + str(er))
                 # KeyboardInterrupt may be ???
 
@@ -85,7 +88,7 @@ class Scope(object):
         self.ydata = [0]
         self.line = Line2D(self.tdata, self.ydata)
         self.ax.add_line(self.line)
-        self.ax.set_ylim(-.1, 1024) # Y range
+        self.ax.set_ylim(-.1, 255) # Y range
         self.ax.set_xlim(0, self.maxt)
 
     def update(self, y):
@@ -114,5 +117,4 @@ def emitter(p=0.03):
             yield data
 
 new = server()
-new.connect()
 new.run()
