@@ -7,3 +7,4 @@ User consol CLI - expands the possibilities for working with a modem.
 The parameters at startup will help to choose the way of working, even if it works as a shadow service.
 
 The project is under development...
+in the future (async read-write, simple QT interface, fix modem echo timeout bug)

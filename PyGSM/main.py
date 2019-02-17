@@ -2,6 +2,7 @@ import serial.tools.list_ports
 from queue import Queue
 import time
 from threading import Thread
+import sys
 
 # parser for sms  https://github.com/adammck/pygsm/blob/master/pygsm/message/incoming.py ?
 # man http://www.avislab.com/blog/wp-content/uploads/2015/10/Neoway_M590_AT_Command_Sets_V3.0.pdf
@@ -12,10 +13,14 @@ reader = Queue()
 connection = None
 
 def run():
-    server_thread = Thread(target=ModemCLI)
-    interface_thread = Thread(target=GsmModem)
-    server_thread.start()
-    interface_thread.start()
+    try:
+        server_thread = Thread(target=ModemCLI)
+        interface_thread = Thread(target=GsmModem)
+        server_thread.start()
+        interface_thread.start()
+    except Exception as er:
+        print("nain exception !", er)
+        sys.exit(1)
 
 
 class M590Exception(Exception):
@@ -40,8 +45,8 @@ class M590Protocol():
                               'network_registration_status': b'AT+CREG?\r',
                               'IMEI': b'AT+CGSN\r',
                               'CIMI': b'AT+CIMI\r',
-                              'CCID': b'AT+CCID\r'}
-        self.network_service_commands = {'RSSI': b'AT+CSQ'}
+                              'CCID': b'AT+CCID\r',
+                              'RSSI': b'AT+CSQ\r'}
         self.sms_commans = {}
         self.special_commands = {'cash_status': b'*100#'} # mean operator commands ..
 
@@ -72,7 +77,10 @@ class ModemCLI(M590Protocol):
             print ("Enter command or type help:")
             command = input()
             if command == 'help':
-                print("HELP me")
+                print("-----Neoway 590 HELP------")
+                print("command = alias ")
+                for command in self.info_commands.keys():
+                    print("%s = %s" % (command, self.info_commands.get(command)))
             else:
                 if len(command) > 0:
                     command = command + '\r'
