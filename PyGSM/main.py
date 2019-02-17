@@ -61,21 +61,27 @@ class M590Protocol():
 
 
 
-class ModemCLI():
+class ModemCLI(M590Protocol):
     def __init__(self):
+        super().__init__()
         print("Start modem CLI interface")
         while not connection:
             pass
         print("interface connected !")
         while connection:
-            print ("Enter command:")
+            print ("Enter command or type help:")
             command = input()
-            if len(command) > 0:
-                command = command+'\r'
-                command = command.encode()
-                writer.put_nowait(command)
-                echo = reader.get(timeout=1)
-                print(echo)
+            if command == 'help':
+                print("HELP me")
+            else:
+                if len(command) > 0:
+                    command = command + '\r'
+                    command = command.encode()
+                    writer.put_nowait(command)
+                    time.sleep(1) # fix here !!!
+                    while reader.empty() is False:
+                        echo = reader.get()
+                        print(echo)
 
 
 class GsmModem(M590Protocol):
@@ -97,7 +103,8 @@ class GsmModem(M590Protocol):
                         line = ser.readline()
                         line = line.decode()
                         if len(line) > 0:
-                            reader.put_nowait(line)
+                            #reader.put_nowait(line)
+                            reader.put(line)
                         if not writer.empty() and ser.out_waiting == 0:
                             ser.write(writer.get_nowait())
                         time.sleep(0.01)
