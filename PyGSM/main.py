@@ -15,8 +15,7 @@ connection = None
 
 def run():
     try:
-        ControlledThread(target = ModemCLI)
-        test = ControlledThread()
+        server = ControlledThread(target=ModemCLI)
 
         GsmModem()
     except Exception as er:
@@ -24,10 +23,9 @@ def run():
     except KeyboardInterrupt as er:
         print("\nCtrl-C exit", er)
     finally:
-        #server_thread.join()
-        #raise KeyboardInterrupt()
-        test.stop()
+        server.stop()
         sys.exit(1)
+
 
 class ControlledThread(Thread):
     def __init__(self, interval=1, target=None):
