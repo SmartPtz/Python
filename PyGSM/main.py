@@ -9,6 +9,7 @@ from threading import Thread
 writer = Queue()
 reader = Queue()
 
+connection = None
 
 def run():
     server_thread = Thread(target=ModemCLI)
@@ -33,30 +34,48 @@ class M590Protocol():
         self.network_status = None
         self.signal_status = None
         self.info_commands = {'modem_ver':b'ATI\r',
+                              'module_model': b'AT+CGMM?\r',
                               'firmware_ver': b'AT+GETVERS\r',
-                              'status': b'AT + CPAS\r'}
+                              'status': b'AT + CPAS\r',
+                              'network_registration_status': b'AT+CREG?\r',
+                              'IMEI': b'AT+CGSN\r',
+                              'CIMI': b'AT+CIMI\r',
+                              'CCID': b'AT+CCID\r'}
+        self.network_service_commands = {'RSSI': b'AT+CSQ'}
         self.sms_commans = {}
         self.special_commands = {'cash_status': b'*100#'} # mean operator commands ..
 
 
-    def cash_status(self):
+    def get_cash_status(self):
         pass
 
-    def get_status(self, ser):
+    def get_modem_status(self, ser):
         pass
+
+    def get_network_status(self):
+        pass
+
+    def get_sim_status(self):
+        pass
+
+
 
 
 class ModemCLI():
     def __init__(self):
-        print("Start m590 interface")
-
-        while True:
+        print("Start modem CLI interface")
+        while not connection:
+            pass
+        print("interface connected !")
+        while connection:
             print ("Enter command:")
             command = input()
             if len(command) > 0:
                 command = command+'\r'
                 command = command.encode()
                 writer.put_nowait(command)
+                echo = reader.get(timeout=1)
+                print(echo)
 
 
 class GsmModem(M590Protocol):
@@ -69,21 +88,21 @@ class GsmModem(M590Protocol):
             connected.append(element.device)
         print("Connected COM ports: " + str(connected))
         while True:
+            global connection
+            connection = True
             try:
                 with serial.Serial('/dev/ttyUSB0', 9600,
                                    timeout=1) as ser:  # TODO написать процедуру поиска устройства, перебора портов ?
-                    ser.write(b'AT + CPAS\r')
-
-                    while True:
+                   while True:
                         line = ser.readline()
                         line = line.decode()
                         if len(line) > 0:
-                            print(line)
                             reader.put_nowait(line)
                         if not writer.empty() and ser.out_waiting == 0:
                             ser.write(writer.get_nowait())
-                        time.sleep(0.1)
+                        time.sleep(0.01)
             except serial.SerialException as er:
+                connection = False
                 print("Problem !", er)
                 time.sleep(1)
                 # print("Cant find device on port ! Try to reconnect")
