@@ -3,6 +3,10 @@ from queue import Queue
 import time
 from threading import Thread, Event
 
+from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtQml import QQmlApplicationEngine
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+
 import sys
 
 # parser for sms  https://github.com/adammck/pygsm/blob/master/pygsm/message/incoming.py ?
@@ -16,6 +20,7 @@ connection = None
 def run():
     try:
         server = ControlledThread(target=ModemCLI)
+        qt_server = ControlledThread(target=QmlApp)
 
         GsmModem()
     except Exception as er:
@@ -24,6 +29,7 @@ def run():
         print("\nCtrl-C exit", er)
     finally:
         server.stop()
+        qt_server.stop()
         sys.exit(1)
 
 
@@ -66,10 +72,12 @@ class M590Protocol():
                               'model': 'AT+CGMM?',
                               'firmware': 'AT+GETVERS',
                               'status': 'AT + CPAS',
-                              'network_status': 'AT+CREG?',
+                              'net_status': 'AT+CREG?',
+                              'net_info': 'AT+COPS?',
                               'imei': 'AT+CGSN',
                               'cimi': 'AT+CIMI',
                               'ccid': 'AT+CCID',
+                              'call': 'ATD+', # will be work later
                               'rssi': 'AT+CSQ'}
         self.sms_commans = {}
         self.special_commands = {'cash_status': b'*100#'} # mean operator commands ..
@@ -85,6 +93,34 @@ class M590Protocol():
 
     def get_sim_status(self):
         pass
+
+
+class QmlApp():
+    def __init__(self):
+        app = QGuiApplication(sys.argv)
+        engine = QQmlApplicationEngine()
+        handler = Haldler()
+        engine.rootContext().setContextProperty("handler", handler)
+        engine.load("main.qml")
+        engine.quit.connect(app.quit)
+        sys.exit(app.exec_())
+
+
+class Haldler(QObject):
+    def __init__(self):
+        QObject.__init__(self)
+
+    sumResult = pyqtSignal(int, arguments=['sum'])
+
+    @pyqtSlot(int, int)
+    def sum(self, arg1, arg2):
+        # print(arg1, arg2)
+        # складываем два аргумента и испускаем сигнал
+        #rnd = random.randint(0, 80)
+        self.sumResult.emit(50)
+
+    def notify(self):
+        self.sumResult.emit(50)
 
 
 class ModemCLI(M590Protocol):
@@ -130,15 +166,16 @@ class GsmModem(M590Protocol):
             try:
                 with serial.Serial('/dev/ttyUSB0', 9600,
                                    timeout=1) as ser:  # TODO написать процедуру поиска устройства, перебора портов ?
-                   while True:
+                    while True:
                         line = ser.readline()
                         line = line.decode()
                         if len(line) > 0:
-                            #reader.put_nowait(line)
+                            # reader.put_nowait(line)
                             reader.put(line)
                         if not writer.empty() and ser.out_waiting == 0:
                             ser.write(writer.get_nowait())
                         time.sleep(0.01)
+
             except serial.SerialException as er:
                 connection = False
                 print("Problem !", er)
